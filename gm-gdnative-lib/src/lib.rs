@@ -890,10 +890,7 @@ struct Cp {
 impl Cp {
 
     fn new() -> Self {
-        let mut cp = Self {
-            manager: IndexTable::new(),
-            ..Default::default()
-        };
+        let mut cp:Cp = Default::default();
         cp.clear();
         cp
     }
