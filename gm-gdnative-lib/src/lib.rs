@@ -22,7 +22,7 @@ use gdnative::prelude::*;
 
 // Table
 
-
+#[derive(Default)]
 struct IndexTable {
     head: u16,
     list: Vec<u16>,
@@ -732,21 +732,21 @@ impl<'a> CpIterMut<'a> {
             return (
                 CpReference {
                     entity: eA,
-                    comp: if cA & Cf::Component != Cf::None { &mut compA[iA] } else { &mut self.cp.emptyA.comp },
-                    objectId: if cA & Cf::Component != Cf::None { &mut objectIdA[iA] } else { &mut self.cp.emptyA.objectId },
-                    body: if cA & Cf::Component != Cf::None { &mut bodyA[iA] } else { &mut self.cp.emptyA.body },
-                    player: if cA & Cf::Component != Cf::None { &mut playerA[iA] } else { &mut self.cp.emptyA.player },
-                    enemy: if cA & Cf::Component != Cf::None { &mut enemyA[iA] } else { &mut self.cp.emptyA.enemy },
-                    animator: if cA & Cf::Component != Cf::None { &mut animatorA[iA] } else { &mut self.cp.emptyA.animator },
+                    comp: &mut compA[iA],
+                    objectId: &mut objectIdA[iA],
+                    body: &mut bodyA[iA],
+                    player: &mut playerA[iA],
+                    enemy: &mut enemyA[iA],
+                    animator: &mut animatorA[iA],
                 },
                 CpReference {
                     entity: eB,
-                    comp: if cB & Cf::Component != Cf::None { &mut compB[0] } else { &mut self.cp.emptyB.comp },
-                    objectId: if cB & Cf::Component != Cf::None { &mut objectIdB[0] } else { &mut self.cp.emptyB.objectId },
-                    body: if cB & Cf::Component != Cf::None { &mut bodyB[0] } else { &mut self.cp.emptyB.body },
-                    player: if cB & Cf::Component != Cf::None { &mut playerB[0] } else { &mut self.cp.emptyB.player },
-                    enemy: if cB & Cf::Component != Cf::None { &mut enemyB[0] } else { &mut self.cp.emptyB.enemy },
-                    animator: if cB & Cf::Component != Cf::None { &mut animatorB[0] } else { &mut self.cp.emptyB.animator },
+                    comp: &mut compB[0],
+                    objectId: &mut objectIdB[0],
+                    body: &mut bodyB[0],
+                    player: &mut playerB[0],
+                    enemy: &mut enemyB[0],
+                    animator: &mut animatorB[0],
                 }
             )
         } else {
@@ -761,21 +761,21 @@ impl<'a> CpIterMut<'a> {
             return (  
                 CpReference {
                     entity: eA,
-                    comp: if cA & Cf::Component != Cf::None { &mut compA[0] } else { &mut self.cp.emptyA.comp },
-                    objectId: if cA & Cf::Component != Cf::None { &mut objectIdA[0] } else { &mut self.cp.emptyA.objectId },
-                    body: if cA & Cf::Component != Cf::None { &mut bodyA[0] } else { &mut self.cp.emptyA.body },
-                    player: if cA & Cf::Component != Cf::None { &mut playerA[0] } else { &mut self.cp.emptyA.player },
-                    enemy: if cA & Cf::Component != Cf::None { &mut enemyA[0] } else { &mut self.cp.emptyA.enemy },
-                    animator: if cA & Cf::Component != Cf::None { &mut animatorA[0] } else { &mut self.cp.emptyA.animator },
+                    comp: &mut compA[0],
+                    objectId: &mut objectIdA[0],
+                    body: &mut bodyA[0],
+                    player: &mut playerA[0],
+                    enemy: &mut enemyA[0],
+                    animator: &mut animatorA[0],
                 },
                 CpReference {
                     entity: eB,
-                    comp: if cB & Cf::Component != Cf::None { &mut compB[iB] } else { &mut self.cp.emptyB.comp },
-                    objectId: if cB & Cf::Component != Cf::None { &mut objectIdB[iB] } else { &mut self.cp.emptyB.objectId },
-                    body: if cB & Cf::Component != Cf::None { &mut bodyB[iB] } else { &mut self.cp.emptyB.body },
-                    player: if cB & Cf::Component != Cf::None { &mut playerB[iB] } else { &mut self.cp.emptyB.player },
-                    enemy: if cB & Cf::Component != Cf::None { &mut enemyB[iB] } else { &mut self.cp.emptyB.enemy },
-                    animator: if cB & Cf::Component != Cf::None { &mut animatorB[iB] } else { &mut self.cp.emptyB.animator },
+                    comp: &mut compB[iB],
+                    objectId: &mut objectIdB[iB],
+                    body: &mut bodyB[iB],
+                    player: &mut playerB[iB],
+                    enemy: &mut enemyB[iB],
+                    animator: &mut animatorB[iB],
                 }
             )
         }
@@ -791,12 +791,12 @@ impl<'a> CpIterMut<'a> {
         let comp = self.cp.comp[i];
         CpReference {
             entity: entity,
-            comp: if comp & Cf::Component != Cf::None { &mut self.cp.comp[i] } else { &mut self.cp.emptyA.comp },
-            objectId: if comp & Cf::Component != Cf::None { &mut self.cp.objectId[i] } else { &mut self.cp.emptyA.objectId },
-            body: if comp & Cf::Component != Cf::None { &mut self.cp.body[i] } else { &mut self.cp.emptyA.body },
-            player: if comp & Cf::Component != Cf::None { &mut self.cp.player[i] } else { &mut self.cp.emptyA.player },
-            enemy: if comp & Cf::Component != Cf::None { &mut self.cp.enemy[i] } else { &mut self.cp.emptyA.enemy },
-            animator: if comp & Cf::Component != Cf::None { &mut self.cp.animator[i] } else { &mut self.cp.emptyA.animator },
+            comp: &mut self.cp.comp[i],
+            objectId: &mut self.cp.objectId[i],
+            body: &mut self.cp.body[i],
+            player: &mut self.cp.player[i],
+            enemy: &mut self.cp.enemy[i],
+            animator: &mut self.cp.animator[i],
         }
     }
 
@@ -818,12 +818,12 @@ impl<'a> CpIterMut<'a> {
             Some(
                 CpReference {
                     entity: Entity::from(self.index.try_into().unwrap(), self.cp.generation[self.index]),
-                    comp: if comp & Cf::Component != Cf::None { &mut self.cp.comp[i] } else { &mut self.cp.emptyA.comp },
-                    objectId: if comp & Cf::Component != Cf::None { &mut self.cp.objectId[i] } else { &mut self.cp.emptyA.objectId },
-                    body: if comp & Cf::Component != Cf::None { &mut self.cp.body[i] } else { &mut self.cp.emptyA.body },
-                    player: if comp & Cf::Component != Cf::None { &mut self.cp.player[i] } else { &mut self.cp.emptyA.player },
-                    enemy: if comp & Cf::Component != Cf::None { &mut self.cp.enemy[i] } else { &mut self.cp.emptyA.enemy },
-                    animator: if comp & Cf::Component != Cf::None { &mut self.cp.animator[i] } else { &mut self.cp.emptyA.animator },
+                    comp: &mut self.cp.comp[i],
+                    objectId: &mut self.cp.objectId[i],
+                    body: &mut self.cp.body[i],
+                    player: &mut self.cp.player[i],
+                    enemy: &mut self.cp.enemy[i],
+                    animator: &mut self.cp.animator[i],
                 }
             )
         } else {
@@ -873,11 +873,8 @@ impl CpPrefab {
 
 
 
-
+#[derive(Default)]
 struct Cp {
-    emptyA: CpPrefab,
-    emptyB: CpPrefab,
-
     manager: IndexTable,
     
     generation: Vec<u16>,
@@ -894,16 +891,8 @@ impl Cp {
 
     fn new() -> Self {
         let mut cp = Self {
-            emptyA: Default::default(),
-            emptyB: Default::default(),
             manager: IndexTable::new(),
-            generation: Vec::new(),
-            comp: Vec::new(),
-            objectId: Vec::new(),
-            body: Vec::new(),
-            player: Vec::new(),
-            enemy: Vec::new(),
-            animator: Vec::new(),
+            ..Default::default()
         };
         cp.clear();
         cp
