@@ -594,6 +594,104 @@ struct CpReference<'a> {
     animator: &'a mut Animator,
 }
 
+
+/*
+struct CpHeadSlice<'a> {
+    generation: &'a mut u16,
+    comp: &'a mut u8,
+    objectId: &'a mut u8,
+    body: &'a mut Body,
+    player: &'a mut Player,
+    enemy: &'a mut Enemy,
+    animator: &'a mut Animator,
+}
+
+struct CpSlice<'a> {
+    generation: &'a mut [u16],
+    comp: &'a mut [u8],
+    objectId: &'a mut [u8],
+    body: &'a mut [Body],
+    player: &'a mut [Player],
+    enemy: &'a mut [Enemy],
+    animator: &'a mut [Animator],
+}
+
+impl<'a> CpSlice<'a> {
+
+    fn split_first_mut(&mut self) -> (CpHeadSlice<'a>, CpSlice<'a>) {
+        let (head_generation, tail_generation) = self.generation.split_first_mut().unwrap();
+        let (head_comp, tail_comp) = self.comp.split_first_mut().unwrap();
+        let (head_objectId, tail_objectId) = self.objectId.split_first_mut().unwrap();
+        let (head_body, tail_body) = self.body.split_first_mut().unwrap();
+        let (head_player, tail_player) = self.player.split_first_mut().unwrap();
+        let (head_enemy, tail_enemy) = self.enemy.split_first_mut().unwrap();
+        let (head_animator, tail_animator) = self.animator.split_first_mut().unwrap();
+        (
+            CpHeadSlice {
+                generation: head_generation,
+                comp: head_comp,
+                objectId: head_objectId,
+                body: head_body,
+                player: head_player,
+                enemy: head_enemy,
+                animator: head_animator,
+            },
+            CpSlice {
+                generation: tail_generation,
+                comp: tail_comp,
+                objectId: tail_objectId,
+                body: tail_body,
+                player: tail_player,
+                enemy: tail_enemy,
+                animator: tail_animator,
+            }
+        )
+    }
+
+}
+*/
+
+/*
+struct CpTestMut<'a> {
+    index: usize,
+    mask: u8,
+    slice: CpSlice<'a>,
+}
+
+impl<'a> Iterator for CpTestMut<'a> {
+
+    type Item = CpReference<'a>;
+
+    
+    fn next (self: &'_ mut MySliceIterMut<'iterator, T>)
+    -> Option<Self::Item>
+  {Some({
+      // reborrow for lifetime '_ < 'iterator => Error
+      let (head, tail) = self.0.split_first_mut()?;
+      self.0 = tail;
+      head
+  })}
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // loop this until we get a match
+        let (head, tail) = self.slice.split_first_mut();
+        self.slice = tail;
+        Some(
+            CpReference{
+                entity: Entity::from(self.index.try_into().unwrap(), *head.generation),
+                comp: head.comp,
+                objectId: head.objectId,
+                body: head.body,
+                player: head.player,
+                enemy: head.enemy,
+                animator: head.animator,
+            }
+        )
+    }
+
+}
+*/
+
 struct CpIterMut<'a> {
     index: usize,
     mask: u8,
