@@ -61,7 +61,7 @@ impl IndexTable {
 
     fn free(&mut self, value: u16) {
         //godot_print!("free {}", value);
-        let index:usize = value.into();
+        let index: usize = value.into();
         if self.list[index] == IndexTable::END_OF_LIST {
             self.list[index] = self.head;
             self.head = value;
@@ -275,7 +275,7 @@ impl Entity {
         self.index == 0
     }
 
-    fn index(&self) -> u16 {
+    fn id(&self) -> u16 {
         self.index
     }
 
@@ -283,7 +283,7 @@ impl Entity {
         self.generation
     }
 
-    fn deref(&self) -> usize {
+    fn index(&self) -> usize {
         self.index.into()
     }
 }
@@ -717,7 +717,7 @@ struct CpIterMut<'a> {
 impl<'a> CpIterMut<'a> {
 
     fn nth(&mut self, e: Entity) -> Option<CpReference> {
-        let n = e.deref();
+        let n = e.index();
         let generation = self.generation.nth(n);
         let comp = self.comp.nth(n);
         let objectId = self.objectId.nth(n);
@@ -745,8 +745,8 @@ impl<'a> CpIterMut<'a> {
 
     fn nth_double(&mut self, a: Entity, b: Entity) -> Option<(CpReference, CpReference)> {
     
-        let ia = a.deref();
-        let ib = b.deref();
+        let ia = a.index();
+        let ib = b.index();
 
         if ia == ib {
             return None;
@@ -877,7 +877,7 @@ struct CpPrefab {
 impl CpPrefab {
 
     fn get(&mut self, cp: &Cp, entity: Entity) {
-        let i =  entity.deref();
+        let i =  entity.index();
         if cp.pack.comp[i].test(Cf::Component) == true { self.comp = cp.pack.comp[i]; }
         if cp.pack.comp[i].test(Cf::ObjectId) == true {  self.objectId = cp.pack.objectId[i]; }
         if cp.pack.comp[i].test(Cf::Body) == true { self.body = cp.pack.body[i]; }
@@ -888,7 +888,7 @@ impl CpPrefab {
 
     fn set(&self, cp: &mut Cp, entity: Entity) {
         if cp.valid(entity) == true {
-            let i =  entity.deref();
+            let i =  entity.index();
             if self.comp.test(Cf::Component) == true { cp.pack.comp[i] = self.comp; }
             if self.comp.test(Cf::ObjectId) == true { cp.pack.objectId[i] = self.objectId; }
             if self.comp.test(Cf::Body) == true { cp.pack.body[i] = self.body; }
@@ -925,15 +925,15 @@ impl Cp {
     }
 
     fn valid(&self, entity: Entity) -> bool {
-        !entity.is_null() && entity.generation() == self.pack.generation[entity.deref()]
+        !entity.is_null() && entity.generation() == self.pack.generation[entity.index()]
     }
 
     fn destroy(&mut self, entity: Entity) {
         if self.valid(entity) == true {
-            self.pack.generation[entity.deref()] += 1;
-            self.pack.comp[entity.deref()].value = Cf::None;
+            self.pack.generation[entity.index()] += 1;
+            self.pack.comp[entity.index()].value = Cf::None;
 
-            self.manager.free( entity.index() );
+            self.manager.free( entity.id() );
         }
     }
 
