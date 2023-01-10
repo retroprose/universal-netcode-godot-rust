@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::cmp::Ordering;
 use core::slice::IterMut;
+use core::iter::Enumerate;
 
 use gdnative::prelude::*;
 
@@ -325,7 +326,7 @@ struct Enemy {
 
 #[derive(Default, Copy, Clone)]
 struct ObjType {
-    //value: u8
+    value: u8
 }
 
 impl ObjType {
@@ -339,11 +340,30 @@ impl ObjType {
     const ShotCleaner: u8 = 7;
     const Count: u8 = 8;
     const USizeCount:usize = 8;
+
+    fn from(value: u8) -> ObjType {
+        Self { value }
+    }
 }
 
 #[derive(Default, Copy, Clone)]
 struct Cf {
-    //flags: u8
+    value: u8
+}
+
+impl Cf {
+
+    fn from(value: u8) -> Cf {
+        Cf { value }
+    }
+
+    fn test(&self, mask: u8) -> bool {
+        self.value & mask == mask
+    }
+
+    fn none(&self) -> bool {
+        self.value == Cf::None
+    }
 }
 
 
@@ -584,261 +604,270 @@ impl Event {
     }
 */
 
+#[derive(Default)]
+struct CpPack {
+    generation: Vec<u16>,
+    comp: Vec<Cf>,
+    objectId: Vec<ObjType>,
+    body: Vec<Body>,
+    player: Vec<Player>,
+    enemy: Vec<Enemy>,
+    animator: Vec<Animator>,
+}
+
+impl CpPack {
+
+    fn new() -> CpPack { 
+        Default::default()
+    }
+
+    fn iter(&mut self) -> CpIterMut {
+        CpIterMut {
+            mask: 0,
+            generation: self.generation.iter_mut().enumerate(),
+            comp: self.comp.iter_mut().enumerate(),
+            objectId: self.objectId.iter_mut().enumerate(),
+            body: self.body.iter_mut().enumerate(),
+            player: self.player.iter_mut().enumerate(),
+            enemy: self.enemy.iter_mut().enumerate(),
+            animator: self.animator.iter_mut().enumerate(),
+        }
+    }
+
+    fn filter(&mut self, mask: u8) -> CpIterMut {
+        CpIterMut {
+            mask: mask,
+            generation: self.generation.iter_mut().enumerate(),
+            comp: self.comp.iter_mut().enumerate(),
+            objectId: self.objectId.iter_mut().enumerate(),
+            body: self.body.iter_mut().enumerate(),
+            player: self.player.iter_mut().enumerate(),
+            enemy: self.enemy.iter_mut().enumerate(),
+            animator: self.animator.iter_mut().enumerate(),
+        }
+    }
+
+    fn clear(&mut self) {
+        self.generation.clear();
+        self.comp.clear();
+        self.objectId.clear();
+        self.body.clear();
+        self.player.clear();
+        self.enemy.clear();
+        self.animator.clear();
+    }
+
+    fn size(&self) -> usize {
+        self.generation.len()
+    }
+
+    fn resize(&mut self, s: usize) {
+        if self.size() < s {
+            self.generation.resize(s, Default::default());
+            self.comp.resize(s, Default::default());
+            self.objectId.resize(s, Default::default());
+            self.body.resize(s, Default::default());
+            self.player.resize(s, Default::default());
+            self.enemy.resize(s, Default::default());
+            self.animator.resize(s, Default::default());
+        }
+    }
+
+    fn smartCopy(&mut self, other: &CpPack) {
+        self.generation.resize(other.generation.len(), Default::default());
+        self.comp.resize(other.comp.len(), Default::default());
+        self.objectId.resize(other.objectId.len(), Default::default());
+        self.body.resize(other.body.len(), Default::default());
+        self.player.resize(other.player.len(), Default::default());
+        self.enemy.resize(other.enemy.len(), Default::default());
+        self.animator.resize(other.animator.len(), Default::default());
+
+        for i in 0..other.generation.len() { self.generation[i] = other.generation[i]; }
+        for i in 0..other.comp.len() { self.comp[i] = other.comp[i]; }
+        for i in 0..other.objectId.len() { self.objectId[i] = other.objectId[i]; }
+        for i in 0..other.body.len() { self.body[i] = other.body[i]; }
+        for i in 0..other.player.len() { self.player[i] = other.player[i]; }
+        for i in 0..other.enemy.len() { self.enemy[i] = other.enemy[i]; }
+        for i in 0..other.animator.len() { self.animator[i] = other.animator[i]; }
+    }
+
+}
+
 struct CpReference<'a> {
     entity: Entity,
-    comp: &'a mut u8,
-    objectId: &'a mut u8,
+    comp: &'a mut Cf,
+    objectId: &'a mut ObjType,
     body: &'a mut Body,
     player: &'a mut Player,
     enemy: &'a mut Enemy,
     animator: &'a mut Animator,
 }
-
-
-/*
-struct CpHeadSlice<'a> {
-    generation: &'a mut u16,
-    comp: &'a mut u8,
-    objectId: &'a mut u8,
-    body: &'a mut Body,
-    player: &'a mut Player,
-    enemy: &'a mut Enemy,
-    animator: &'a mut Animator,
-}
-
-struct CpSlice<'a> {
-    generation: &'a mut [u16],
-    comp: &'a mut [u8],
-    objectId: &'a mut [u8],
-    body: &'a mut [Body],
-    player: &'a mut [Player],
-    enemy: &'a mut [Enemy],
-    animator: &'a mut [Animator],
-}
-
-impl<'a> CpSlice<'a> {
-
-    fn split_first_mut(&mut self) -> (CpHeadSlice<'a>, CpSlice<'a>) {
-        let (head_generation, tail_generation) = self.generation.split_first_mut().unwrap();
-        let (head_comp, tail_comp) = self.comp.split_first_mut().unwrap();
-        let (head_objectId, tail_objectId) = self.objectId.split_first_mut().unwrap();
-        let (head_body, tail_body) = self.body.split_first_mut().unwrap();
-        let (head_player, tail_player) = self.player.split_first_mut().unwrap();
-        let (head_enemy, tail_enemy) = self.enemy.split_first_mut().unwrap();
-        let (head_animator, tail_animator) = self.animator.split_first_mut().unwrap();
-        (
-            CpHeadSlice {
-                generation: head_generation,
-                comp: head_comp,
-                objectId: head_objectId,
-                body: head_body,
-                player: head_player,
-                enemy: head_enemy,
-                animator: head_animator,
-            },
-            CpSlice {
-                generation: tail_generation,
-                comp: tail_comp,
-                objectId: tail_objectId,
-                body: tail_body,
-                player: tail_player,
-                enemy: tail_enemy,
-                animator: tail_animator,
-            }
-        )
-    }
-
-}
-*/
-
-/*
-struct CpTestMut<'a> {
-    index: usize,
-    mask: u8,
-    slice: CpSlice<'a>,
-}
-
-impl<'a> Iterator for CpTestMut<'a> {
-
-    type Item = CpReference<'a>;
-
-    
-    fn next (self: &'_ mut MySliceIterMut<'iterator, T>)
-    -> Option<Self::Item>
-  {Some({
-      // reborrow for lifetime '_ < 'iterator => Error
-      let (head, tail) = self.0.split_first_mut()?;
-      self.0 = tail;
-      head
-  })}
-
-    fn next(&mut self) -> Option<Self::Item> {
-        // loop this until we get a match
-        let (head, tail) = self.slice.split_first_mut();
-        self.slice = tail;
-        Some(
-            CpReference{
-                entity: Entity::from(self.index.try_into().unwrap(), *head.generation),
-                comp: head.comp,
-                objectId: head.objectId,
-                body: head.body,
-                player: head.player,
-                enemy: head.enemy,
-                animator: head.animator,
-            }
-        )
-    }
-
-}
-*/
 
 struct CpIterMut<'a> {
-    index: usize,
     mask: u8,
-    cp: &'a mut Cp,
+    generation: Enumerate<IterMut<'a, u16>>,
+    comp: Enumerate<IterMut<'a, Cf>>,
+    objectId: Enumerate<IterMut<'a, ObjType>>,
+    body: Enumerate<IterMut<'a, Body>>,
+    player: Enumerate<IterMut<'a, Player>>,
+    enemy: Enumerate<IterMut<'a, Enemy>>,
+    animator: Enumerate<IterMut<'a, Animator>>,
 }
 
 impl<'a> CpIterMut<'a> {
 
-    fn from_mask(mask: u8, cp: &'a mut Cp) -> Self {
-        Self {
-            index: 0,
-            mask: mask,
-            cp: cp,
-        }
-    }
-
-    fn from(cp: &'a mut Cp) -> Self {
-        Self {
-            index: 0,
-            mask: Cf::None,
-            cp: cp,
-        }
-    }
-
-    fn nth_double(&mut self, eA: Entity, eB: Entity) -> (CpReference, CpReference) {
-        let iA = eA.deref();
-        let iB = eB.deref();
-    
-        if iA < iB {
-            let cA = self.cp.comp[iA];
-            let cB = self.cp.comp[iB];
-            let (compA, compB) = self.cp.comp.split_at_mut(iB);
-            let (objectIdA, objectIdB) = self.cp.objectId.split_at_mut(iB);
-            let (bodyA, bodyB) = self.cp.body.split_at_mut(iB);
-            let (playerA, playerB) = self.cp.player.split_at_mut(iB);
-            let (enemyA, enemyB) = self.cp.enemy.split_at_mut(iB);
-            let (animatorA, animatorB) = self.cp.animator.split_at_mut(iB);
-            return (
-                CpReference {
-                    entity: eA,
-                    comp: &mut compA[iA],
-                    objectId: &mut objectIdA[iA],
-                    body: &mut bodyA[iA],
-                    player: &mut playerA[iA],
-                    enemy: &mut enemyA[iA],
-                    animator: &mut animatorA[iA],
-                },
-                CpReference {
-                    entity: eB,
-                    comp: &mut compB[0],
-                    objectId: &mut objectIdB[0],
-                    body: &mut bodyB[0],
-                    player: &mut playerB[0],
-                    enemy: &mut enemyB[0],
-                    animator: &mut animatorB[0],
-                }
-            )
+    fn nth(&mut self, e: Entity) -> Option<CpReference> {
+        let n = e.deref();
+        let generation = self.generation.nth(n);
+        let comp = self.comp.nth(n);
+        let objectId = self.objectId.nth(n);
+        let body = self.body.nth(n);
+        let player = self.player.nth(n);
+        let enemy = self.enemy.nth(n);
+        let animator = self.animator.nth(n);
+        if generation == None {
+            None
         } else {
-            let cA = self.cp.comp[iA];
-            let cB = self.cp.comp[iB];
-            let (compB, compA) = self.cp.comp.split_at_mut(iA);
-            let (objectIdB, objectIdA) = self.cp.objectId.split_at_mut(iA);
-            let (bodyB, bodyA) = self.cp.body.split_at_mut(iA);
-            let (playerB, playerA) = self.cp.player.split_at_mut(iA);
-            let (enemyB, enemyA) = self.cp.enemy.split_at_mut(iA);
-            let (animatorB, animatorA) = self.cp.animator.split_at_mut(iA);
-            return (  
-                CpReference {
-                    entity: eA,
-                    comp: &mut compA[0],
-                    objectId: &mut objectIdA[0],
-                    body: &mut bodyA[0],
-                    player: &mut playerA[0],
-                    enemy: &mut enemyA[0],
-                    animator: &mut animatorA[0],
-                },
-                CpReference {
-                    entity: eB,
-                    comp: &mut compB[iB],
-                    objectId: &mut objectIdB[iB],
-                    body: &mut bodyB[iB],
-                    player: &mut playerB[iB],
-                    enemy: &mut enemyB[iB],
-                    animator: &mut animatorB[iB],
-                }
-            )
-        }
-    }
-
-    fn nth(&mut self, entity: Entity) -> CpReference {
-        if self.cp.valid(entity) == true && (self.cp.comp[self.index] & self.mask) == self.mask {
-            self.index = entity.deref();   
-        } else {
-            self.index = 0;
-        }
-        let i = self.index;
-        let comp = self.cp.comp[i];
-        CpReference {
-            entity: entity,
-            comp: &mut self.cp.comp[i],
-            objectId: &mut self.cp.objectId[i],
-            body: &mut self.cp.body[i],
-            player: &mut self.cp.player[i],
-            enemy: &mut self.cp.enemy[i],
-            animator: &mut self.cp.animator[i],
-        }
-    }
-
-   
-    fn next(&mut self) -> Option<CpReference> {
-        let len = self.cp.comp.len();
-        loop {
-            self.index += 1;
-            if self.index >= len {
-                break;
-            }
-            if (self.cp.comp[self.index] & self.mask) == self.mask {
-                break;
-            }
-        }
-        if self.index < len {
-            let i = self.index;
-            let comp = self.cp.comp[i];
+            let g = generation.unwrap();
             Some(
                 CpReference {
-                    entity: Entity::from(self.index.try_into().unwrap(), self.cp.generation[self.index]),
-                    comp: &mut self.cp.comp[i],
-                    objectId: &mut self.cp.objectId[i],
-                    body: &mut self.cp.body[i],
-                    player: &mut self.cp.player[i],
-                    enemy: &mut self.cp.enemy[i],
-                    animator: &mut self.cp.animator[i],
+                    entity: Entity::from(g.0.try_into().unwrap(), *g.1),
+                    comp: comp.unwrap().1,
+                    objectId: objectId.unwrap().1,
+                    body: body.unwrap().1,
+                    player: player.unwrap().1,
+                    enemy: enemy.unwrap().1,
+                    animator: animator.unwrap().1,
                 }
             )
-        } else {
-            None
         }
     }
 
-   
+    fn nth_double(&mut self, a: Entity, b: Entity) -> Option<(CpReference, CpReference)> {
+    
+        let ia = a.deref();
+        let ib = b.deref();
+
+        if ia == ib {
+            return None;
+        }
+
+        let swapped = ia > ib;
+
+        let mut n0 = ia;
+        let mut n1 = ib;
+
+        if swapped == true {
+            n0 = ib;
+            n1 = ia;
+        }
+
+        n1 = n1 - (n0 + 1);
+
+        let mut A: CpReference;
+        let mut B: CpReference;
+
+        let generation = self.generation.nth(n0);
+        let comp = self.comp.nth(n0);
+        let objectId = self.objectId.nth(n0);
+        let body = self.body.nth(n0);
+        let player = self.player.nth(n0);
+        let enemy = self.enemy.nth(n0);
+        let animator = self.animator.nth(n0);
+        
+        if generation == None {
+            return None;
+        } else {
+            let g = generation.unwrap();
+            A = CpReference {
+                entity: Entity::from(g.0.try_into().unwrap(), *g.1),
+                comp: comp.unwrap().1,
+                objectId: objectId.unwrap().1,
+                body: body.unwrap().1,
+                player: player.unwrap().1,
+                enemy: enemy.unwrap().1,
+                animator: animator.unwrap().1,
+            };
+        }
+
+        let generation = self.generation.nth(n1);
+        let comp = self.comp.nth(n1);
+        let objectId = self.objectId.nth(n1);
+        let body = self.body.nth(n1);
+        let player = self.player.nth(n1);
+        let enemy = self.enemy.nth(n1);
+        let animator = self.animator.nth(n1);
+        
+        if generation == None {
+            return None;
+        } else {
+            let g = generation.unwrap();
+            B = CpReference {
+                entity: Entity::from(g.0.try_into().unwrap(), *g.1),
+                comp: comp.unwrap().1,
+                objectId: objectId.unwrap().1,
+                body: body.unwrap().1,
+                player: player.unwrap().1,
+                enemy: enemy.unwrap().1,
+                animator: animator.unwrap().1,
+            };
+        }
+
+        if swapped == true {
+            return Some((B, A));
+        } else {
+            return Some((A, B));
+        }
+
+    }
+
+}
+
+impl<'a> Iterator for CpIterMut<'a> {
+    type Item = CpReference<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut done = false;
+        while done == false {
+            let generation = self.generation.next();
+            let comp = self.comp.next();
+            let objectId = self.objectId.next();
+            let body = self.body.next();
+            let player = self.player.next();
+            let enemy = self.enemy.next();
+            let animator = self.animator.next();
+            if generation == None {
+                done = true;
+                return None;
+            } else {
+                let c = comp.unwrap();
+                if c.1.test(self.mask) {
+                    done = true;
+                    return Some(
+                        CpReference {
+                            entity: Entity::from(c.0.try_into().unwrap(), *generation.unwrap().1),
+                            comp: c.1,
+                            objectId: objectId.unwrap().1,
+                            body: body.unwrap().1,
+                            player: player.unwrap().1,
+                            enemy: enemy.unwrap().1,
+                            animator: animator.unwrap().1,
+                        }
+                    );
+                } else {
+                    // do nothing, keep going!
+                }
+            }
+        }
+        None
+    }
 }
 
 
 #[derive(Default, Copy, Clone)]
 struct CpPrefab {
-    comp: u8,
-    objectId: u8,
+    comp: Cf,
+    objectId: ObjType,
     body: Body,
     player: Player,
     enemy: Enemy,
@@ -849,23 +878,23 @@ impl CpPrefab {
 
     fn get(&mut self, cp: &Cp, entity: Entity) {
         let i =  entity.deref();
-        if cp.comp[i] & Cf::Component != Cf::None { self.comp = cp.comp[i]; }
-        if cp.comp[i] & Cf::ObjectId != Cf::None {  self.objectId = cp.objectId[i]; }
-        if cp.comp[i] & Cf::Body != Cf::None { self.body = cp.body[i]; }
-        if cp.comp[i] & Cf::Player != Cf::None { self.player = cp.player[i]; }
-        if cp.comp[i] & Cf::Enemy != Cf::None { self.enemy = cp.enemy[i]; }
-        if cp.comp[i] & Cf::Animator != Cf::None { self.animator = cp.animator[i]; }
+        if cp.pack.comp[i].test(Cf::Component) == true { self.comp = cp.pack.comp[i]; }
+        if cp.pack.comp[i].test(Cf::ObjectId) == true {  self.objectId = cp.pack.objectId[i]; }
+        if cp.pack.comp[i].test(Cf::Body) == true { self.body = cp.pack.body[i]; }
+        if cp.pack.comp[i].test(Cf::Player) == true { self.player = cp.pack.player[i]; }
+        if cp.pack.comp[i].test(Cf::Enemy) == true { self.enemy = cp.pack.enemy[i]; }
+        if cp.pack.comp[i].test(Cf::Animator) == true { self.animator = cp.pack.animator[i]; }
     }
 
     fn set(&self, cp: &mut Cp, entity: Entity) {
         if cp.valid(entity) == true {
             let i =  entity.deref();
-            if self.comp & Cf::Component != Cf::None { cp.comp[i] = self.comp; }
-            if self.comp & Cf::ObjectId != Cf::None { cp.objectId[i] = self.objectId; }
-            if self.comp & Cf::Body != Cf::None { cp.body[i] = self.body; }
-            if self.comp & Cf::Player != Cf::None { cp.player[i] = self.player; }
-            if self.comp & Cf::Enemy != Cf::None { cp.enemy[i] = self.enemy; }
-            if self.comp & Cf::Animator != Cf::None { cp.animator[i] = self.animator; }
+            if self.comp.test(Cf::Component) == true { cp.pack.comp[i] = self.comp; }
+            if self.comp.test(Cf::ObjectId) == true { cp.pack.objectId[i] = self.objectId; }
+            if self.comp.test(Cf::Body) == true { cp.pack.body[i] = self.body; }
+            if self.comp.test(Cf::Player) == true { cp.pack.player[i] = self.player; }
+            if self.comp.test(Cf::Enemy) == true { cp.pack.enemy[i] = self.enemy; }
+            if self.comp.test(Cf::Animator) == true { cp.pack.animator[i] = self.animator; }
         }
     }
 
@@ -876,14 +905,7 @@ impl CpPrefab {
 #[derive(Default)]
 struct Cp {
     manager: IndexTable,
-    
-    generation: Vec<u16>,
-    comp: Vec<u8>,
-    objectId: Vec<u8>,
-    body: Vec<Body>,
-    player: Vec<Player>,
-    enemy: Vec<Enemy>,
-    animator: Vec<Animator>,
+    pack: CpPack,
 }
 
 
@@ -896,44 +918,21 @@ impl Cp {
     }
 
     fn smartCopy(&mut self, other: &Self) {
-        self.manager.list.resize(other.manager.list.len(), Default::default());
-        self.generation.resize(other.generation.len(), Default::default());
-        self.comp.resize(other.comp.len(), Default::default());
-        self.objectId.resize(other.objectId.len(), Default::default());
-        self.body.resize(other.body.len(), Default::default());
-        self.player.resize(other.player.len(), Default::default());
-        self.enemy.resize(other.enemy.len(), Default::default());
-        self.animator.resize(other.animator.len(), Default::default());
-        
+        self.manager.list.resize(other.manager.list.len(), Default::default());   
         self.manager.head = other.manager.head;
         for i in 0..other.manager.list.len() { self.manager.list[i] = other.manager.list[i]; } 
-        for i in 0..other.generation.len() { self.generation[i] = other.generation[i]; }
-        for i in 0..other.comp.len() { self.comp[i] = other.comp[i]; }
-        for i in 0..other.objectId.len() { self.objectId[i] = other.objectId[i]; }
-        for i in 0..other.body.len() { self.body[i] = other.body[i]; }
-        for i in 0..other.player.len() { self.player[i] = other.player[i]; }
-        for i in 0..other.enemy.len() { self.enemy[i] = other.enemy[i]; }
-        for i in 0..other.animator.len() { self.animator[i] = other.animator[i]; }
-    }
-
-    fn resize(&mut self, s: usize) {
-        self.generation.resize(s, Default::default());
-        self.comp.resize(s, Cf::None);
-        self.objectId.resize(s, Default::default());
-        self.body.resize(s, Default::default());
-        self.player.resize(s, Default::default());
-        self.enemy.resize(s, Default::default());
-        self.animator.resize(s, Default::default());
+        self.pack.smartCopy(&other.pack);
     }
 
     fn valid(&self, entity: Entity) -> bool {
-        !entity.is_null() && entity.generation() == self.generation[entity.deref()]
+        !entity.is_null() && entity.generation() == self.pack.generation[entity.deref()]
     }
 
     fn destroy(&mut self, entity: Entity) {
         if self.valid(entity) == true {
-            self.generation[entity.deref()] += 1;
-            self.comp[entity.deref()] = Cf::None;
+            self.pack.generation[entity.deref()] += 1;
+            self.pack.comp[entity.deref()].value = Cf::None;
+
             self.manager.free( entity.index() );
         }
     }
@@ -942,55 +941,44 @@ impl Cp {
         let mut entity = Entity::new();
         let value = self.manager.allocate();
         if value != IndexTable::END_OF_LIST {
-            let deref = usize::try_from(value).unwrap();
-            // only resize if its too small!!!!!!!
-            // lost my insert logic when switching containers over!
-            if self.comp.len() < deref + 1 {
-                self.resize(deref + 1);
-            }
-            self.comp[deref] = Cf::None;
-            entity = Entity::from(value, self.generation[deref])
+            let deref:usize = value.into();
+            self.pack.resize(deref + 1);
+            self.pack.comp[deref].value = Cf::None;
+            entity = Entity::from(value, self.pack.generation[deref])
         }
         entity
     }
 
     fn clear(&mut self) {
-        self.generation.clear();
-        self.comp.clear();
-        self.objectId.clear();
-        self.body.clear();
-        self.player.clear();
-        self.enemy.clear();
-        self.animator.clear();
         self.manager.reset();
+        self.pack.clear();
     }
 
-    fn iter(&mut self) -> CpIterMut {
-        CpIterMut::from(self)
+    fn iter(&mut self) -> CpIterMut{
+        self.pack.iter()
     }
 
-    fn iter_filter(&mut self, mask: u8) -> CpIterMut {
-        CpIterMut::from_mask(mask, self)
+    fn filter(&mut self, mask: u8) -> CpIterMut{
+        self.pack.filter(mask)
     }
-
 
     fn print(&self, index: u16) -> bool {
         let mut ret = false;
-        let i: usize = index.try_into().unwrap();
-        if i < self.comp.len() {
+        let i: usize = index.into();
+        if i < self.pack.comp.len() {
             godot_print!("*********************************************");
             godot_print!("Entity Index: {}", index);
-            godot_print!("Comp: {}", self.comp[i]);
-            godot_print!("ObjectId: {}", self.objectId[i]);
-            godot_print!("body position x: {}", self.body[i].position.x);
-            godot_print!("body position y: {}", self.body[i].position.y);
-            godot_print!("Enemy direction: {}", self.enemy[i].direction);
-            godot_print!("Enemy counter: {}", self.enemy[i].counter);
-            godot_print!("Enemy delayFire: {}", self.enemy[i].delayFire);
-            godot_print!("Animator frame: {}", self.animator[i].frame);
-            godot_print!("Animator counter: {}", self.animator[i].count);
+            godot_print!("Comp: {}", self.pack.comp[i].value);
+            godot_print!("ObjectId: {}", self.pack.objectId[i].value);
+            godot_print!("body position x: {}", self.pack.body[i].position.x);
+            godot_print!("body position y: {}", self.pack.body[i].position.y);
+            godot_print!("Enemy direction: {}", self.pack.enemy[i].direction);
+            godot_print!("Enemy counter: {}", self.pack.enemy[i].counter);
+            godot_print!("Enemy delayFire: {}", self.pack.enemy[i].delayFire);
+            godot_print!("Animator frame: {}", self.pack.animator[i].frame);
+            godot_print!("Animator counter: {}", self.pack.animator[i].count);
 
-            if self.comp[i] == 0 {
+            if self.pack.comp[i].none() == true {
                 ret = true;
             }
         }
@@ -1079,15 +1067,15 @@ impl Data {
             prefabs: [
                 // null object
                 CpPrefab {
-                    comp: Cf::Component,
-                    objectId: ObjType::Null,
+                    comp: Cf::from(Cf::Component),
+                    objectId: ObjType::from(ObjType::Null),
                     ..Default::default()
                 },
 
                 // player
                 CpPrefab {
-                    comp: Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Player | Cf::Animator,
-                    objectId: ObjType::Player,
+                    comp: Cf::from(Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Player | Cf::Animator),
+                    objectId: ObjType::from(ObjType::Player),
                     body: Body {
                         size: Vector2::from(16, 10),
                         ..Default::default()
@@ -1106,8 +1094,8 @@ impl Data {
 
                 // enemy
                 CpPrefab {
-                    comp: Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Enemy | Cf::Animator,
-                    objectId: ObjType::Enemy,
+                    comp: Cf::from(Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Enemy | Cf::Animator),
+                    objectId: ObjType::from(ObjType::Enemy),
                     body: Body {
                         size: Vector2::from(16, 10),
                         ..Default::default()
@@ -1126,8 +1114,8 @@ impl Data {
 
                 // bullet
                 CpPrefab {
-                    comp: Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Animator,
-                    objectId: ObjType::Bullet,
+                    comp: Cf::from(Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Animator),
+                    objectId: ObjType::from(ObjType::Bullet),
                     body: Body {
                         velocity: Vector2::from(0, 16),
                         size: Vector2::from(12, 20),
@@ -1142,8 +1130,8 @@ impl Data {
                         
                 // bad bullet
                 CpPrefab {
-                    comp: Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Animator,
-                    objectId: ObjType::BadBullet,
+                    comp: Cf::from(Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Animator),
+                    objectId: ObjType::from(ObjType::BadBullet),
                     body: Body {
                         velocity: Vector2::from(0, -8),
                         size: Vector2::from(7, 7),
@@ -1158,8 +1146,8 @@ impl Data {
 
                  // boom
                  CpPrefab {
-                    comp: Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Animator,
-                    objectId: ObjType::Boom,
+                    comp: Cf::from(Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Animator),
+                    objectId: ObjType::from(ObjType::Boom),
                     body: Body {
                         size: Vector2::from(14, 14),
                         ..Default::default()
@@ -1173,8 +1161,8 @@ impl Data {
 
                 // player boom
                 CpPrefab {
-                    comp: Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Animator,
-                    objectId: ObjType::PlayerBoom,
+                    comp: Cf::from(Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Animator),
+                    objectId: ObjType::from(ObjType::PlayerBoom),
                     body: Body {
                         size: Vector2::from(22, 21),
                         ..Default::default()
@@ -1188,8 +1176,8 @@ impl Data {
 
                 // shot cleaner
                 CpPrefab {
-                    comp: Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId,
-                    objectId: ObjType::ShotCleaner,
+                    comp: Cf::from(Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId),
+                    objectId: ObjType::from(ObjType::ShotCleaner),
                     body: Body {
                         size: Vector2::from(960, 540),
                         ..Default::default()
@@ -1203,8 +1191,7 @@ impl Data {
 
 }
 
-//type GameCallback = fn(&mut Game, &Event);
-type GameCallback = fn(&mut Game, usize);
+
 
 struct Game {
     //collision_table: HashMap<u16, GameCallback>,
@@ -1265,7 +1252,7 @@ impl Game {
     fn collisionFunction(game: &mut Self, index: usize) {
         let e = game.eventList[index];
         let mut iter = game.components.iter();
-        let (a, b) = iter.nth_double(e.a, e.b);
+        let (a, b) = iter.nth_double(e.a, e.b).unwrap();
         match e.key {
             Game::shotCleanerVsBulletKey | 
             Game::shotCleanerVsBadBulletKey => {
@@ -1301,6 +1288,7 @@ impl Game {
             }
         }
     }
+    
     
     fn setupAnimationTable() -> HashMap<u16, u16> {
         let mut hash = HashMap::new();
@@ -1375,6 +1363,7 @@ impl Game {
         }
     }
     
+    
     fn smartCopy(&mut self, other: &Game) {
         self.slots.resize(other.slots.len(), Default::default());
         for i in 0..other.slots.len() { self.slots[i] = other.slots[i]; }
@@ -1384,6 +1373,8 @@ impl Game {
         self.components.smartCopy(&other.components);
         self.gameOver = other.gameOver;
     }
+    
+
     
     fn init(&mut self, seed: u32) {
 
@@ -1447,8 +1438,7 @@ impl Game {
                     // fix all ships
                     //Targets.Clear();
 
-                    let mut iter = self.components.iter_filter(Cf::Active | Cf::Player);
-                    while let Some(r) = iter.next() {
+                    for r in self.components.pack.filter(Cf::Active | Cf::Player) {
                         if self.slots[usize::try_from(r.player.slot).unwrap()].connected == true {
                             r.player.damage = 0;
                             r.animator.frame = Data::player_ship_0;
@@ -1498,10 +1488,8 @@ impl Game {
         self.boundList.clear();
 
         // fill up the bounds list with objects
-        //let mut iter = self.components.iter_filter(Cf::Active | Cf::Body);
-        let mut iter = self.components.iter_filter(Cf::Active | Cf::Body);
-        while let Some(r) = iter.next() {
-            self.boundList.push( Bounds::from(r.entity, *r.objectId, r.body.position, r.body.velocity, r.body.size) );
+        for r in self.components.filter(Cf::Active | Cf::Body) {
+            self.boundList.push( Bounds::from(r.entity, r.objectId.value, r.body.position, r.body.velocity, r.body.size) );
         }
 
         // sort it here!
@@ -1539,15 +1527,14 @@ impl Game {
     
 
     fn integrate(&mut self) {
-        let mut iter = self.components.iter_filter(Cf::Active | Cf::Body);
-        while let Some(r) = iter.next() {
+        for r in self.components.filter(Cf::Active | Cf::Body) {
             r.body.position += r.body.velocity;
         }
     }
 
+    
     fn updateAnimators(&mut self) {
-        let mut iter = self.components.iter_filter(Cf::Active | Cf::Body);
-        while let Some(r) = iter.next() {
+        for r in self.components.filter(Cf::Active | Cf::Animator) {
             r.animator.count += 1;
             if r.animator.count > 3 {
                 r.animator.count = 0;
@@ -1566,9 +1553,7 @@ impl Game {
     fn updateEnemies(&mut self) {
         self.global.enemyCount = 0;
 
-        let mut iter = self.components.iter_filter(Cf::Active | Cf::Body | Cf::Enemy);
-        while let Some(r) = iter.next() { 
-
+        for r in self.components.filter(Cf::Active | Cf::Body | Cf::Enemy) {
             r.enemy.counter += 1;
             if r.enemy.counter > 150 {
                 r.enemy.counter = 0;
@@ -1605,8 +1590,7 @@ impl Game {
         //Targets.Clear();
         let mut livePlayer = false;
 
-        let mut iter = self.components.iter_filter(Cf::Active | Cf::Body | Cf::Player);
-        while let Some(r) = iter.next() { 
+        for r in self.components.filter(Cf::Active | Cf::Body | Cf::Player) {
 
             let slot = self.slots[usize::try_from(r.player.slot).unwrap()];
 
@@ -1657,8 +1641,7 @@ impl Game {
             self.global.textAnimate = 0;
             self.global.textType = Data::text_no;
 
-            let mut iter = self.components.iter_filter(Cf::Active | Cf::Body | Cf::Enemy);
-            while let Some(r) = iter.next() { 
+            for r in self.components.filter(Cf::Active | Cf::Body | Cf::Enemy) {
                 self.eventList.push( Event::from_destroy(r.entity) );
             }
         }
@@ -1685,17 +1668,17 @@ impl Game {
                     // create from prefab!
                     let entity = self.components.create();
                     self.data.prefab(self.eventList[event_index].otype).set(&mut self.components, entity);
-                    let mut iter = self.components.iter();
-                    let r = iter.nth(entity);
+                    let mut iter = self.components.pack.iter();
+                    let r = iter.nth(entity).unwrap();
 
                     if !entity.is_null() {
-                        if *r.comp & Cf::Body != Cf::None {
+                        if r.comp.test(Cf::Body) == true {
                             r.body.position = self.eventList[event_index].v;
                         }
-                        if *r.comp & Cf::Player != Cf::None {
+                        if r.comp.test(Cf::Player) == true {
                             r.player.slot = i8::try_from(self.eventList[event_index].key).unwrap();
                         }
-                        if *r.comp & Cf::Enemy != Cf::None {
+                        if r.comp.test(Cf::Enemy) == true {
                             let count = i32::try_from(Data::enemy_type_count).unwrap();
                             //it.enemy.delayFire = u16::try_from(self.rand.next_from_zero(2000)).unwrap();
                             r.enemy.delayFire = u16::try_from(self.rand.next_u32() % 2000).unwrap();
@@ -1714,7 +1697,7 @@ impl Game {
         self.eventList.clear();
     
     }
-
+    
 
 
 }
@@ -1791,13 +1774,15 @@ impl HelloWorld {
 
     #[method]
     fn custom_update(&mut self) {
-         // update game here
-         self.game.update();
+        // update game here
+        self.game.update();
     }
 
     #[method]
     fn custom_render(&mut self, layer_ref: Ref<Node>) {
         
+        
+
         // The `godot_print!` macro works like `println!` but prints to the Godot-editor
         // output tab as well.
 
@@ -1812,13 +1797,11 @@ impl HelloWorld {
         let mut ty: i32 = 0;
         let mut tf: u16 = 0;
 
-
-        let mut iter = self.game.components.iter_filter(Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Animator);
-        while let Some(r) = iter.next() { 
-
+        for r in self.game.components.filter(Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Animator) {
+       
             draw = true;
 
-            if *r.comp & Cf::Player == Cf::Player
+            if r.comp.test(Cf::Player) == true
             {
                 if r.player.slot == self.local_player
                 {
@@ -1885,6 +1868,8 @@ impl HelloWorld {
             unsafe { layer.call("create_invader", &[f, x, y, sx, sy]) };
         }
         
+        
+
     }
 
 }
