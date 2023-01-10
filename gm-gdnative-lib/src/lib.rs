@@ -1059,7 +1059,7 @@ impl Data {
     const _end_list: u16 = 51;
 
     fn prefab(&self, index: u8) -> CpPrefab {
-        self.prefabs[usize::try_from(index).unwrap()]
+        self.prefabs[usize::from(index)]
     }
 
     fn new() -> Self {
@@ -1340,7 +1340,7 @@ impl Game {
             Data::_end_list
         ];
         for i in 0..Data::enemy_type_count {
-            let i_u16 = u16::try_from(i).unwrap();
+            let i_u16: u16 = i.try_into().unwrap();
             enemy[0] = i_u16 + 2;
             enemy[1] = i_u16 + 2 + Data::enemy_type_count;
             Game::registerAnimation(&mut hash, &enemy);
@@ -1395,8 +1395,8 @@ impl Game {
             // if slot is connected
             if self.slots[usize_j].connected == true && self.slots[usize_j].connectedAtStart == true
             {
-                let j = i32::try_from(usize_j).unwrap();
-                let j16 = u16::try_from(usize_j).unwrap();
+                let j: i32 = usize_j.try_into().unwrap();
+                let j16: u16 = usize_j.try_into().unwrap();
                 self.eventList.push( Event::from_player(j16, Vector2::from(j * 60 - 960 + 32, -500) ) );
             }
         }
@@ -1451,8 +1451,8 @@ impl Game {
                     {
                         for i_usize in 0..20
                         {
-                            let i = i32::try_from(i_usize).unwrap();
-                            let j = i32::try_from(j_usize).unwrap();
+                            let i: i32 = i_usize.try_into().unwrap();
+                            let j: i32 = j_usize.try_into().unwrap();
                             self.eventList.push( Event::from_entity(ObjType::Enemy, Vector2::from(j * 60 - 960 + 32, i * 32 - 100) ) );
                         }
                     }
@@ -1512,8 +1512,8 @@ impl Game {
             for j in (i + 1)..len {
                 let nextIter = &self.boundList[j];
                 if iter.overlap(&nextIter) == true {
-                    let it = u16::try_from(iter.btype).unwrap();
-                    let nxit = u16::try_from(nextIter.btype).unwrap();
+                    let it: u16 = iter.btype.into();
+                    let nxit: u16 = nextIter.btype.into();
                     if iter.btype > nextIter.btype {
                         self.eventList.push( Event::from_contact( (it << 8) | nxit, iter.entity, nextIter.entity ) );
                     } else {
@@ -1560,7 +1560,7 @@ impl Game {
                 r.enemy.direction = -r.enemy.direction;
             }
 
-            r.body.velocity.x = i32::try_from(r.enemy.direction).unwrap() * self.global.enemySpeed;
+            r.body.velocity.x = i32::from(r.enemy.direction) * self.global.enemySpeed;
 
             if r.enemy.delayFire > 0 {
                 r.enemy.delayFire -= 1;
