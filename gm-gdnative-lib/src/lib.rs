@@ -9,8 +9,8 @@ use std::vec;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::cmp::Ordering;
-use core::slice::IterMut;
-use core::iter::Enumerate;
+use std::slice::IterMut;
+use std::iter::Enumerate;
 
 use gdnative::prelude::*;
 
@@ -1059,6 +1059,7 @@ impl Data {
     const _end_list: u16 = 51;
 
     fn prefab(&self, index: u8) -> CpPrefab {
+        // why can't I use index.into() here?
         self.prefabs[usize::from(index)]
     }
 
@@ -1244,7 +1245,8 @@ impl Game {
     //    self.components.iter_filter(mask)
     //}
 
-    const fn computeKey(a: u8, b: u8) -> u16 { ((a as u16)  << 8) | (b as u16) }   
+    // need to use "as" because this is a const function!  Thankfully this can't overflow
+    const fn computeKey(a: u8, b: u8) -> u16 { ((a as u16) << 8) | (b as u16) }   
     const shotCleanerVsBulletKey: u16 = Game::computeKey(ObjType::ShotCleaner, ObjType::Bullet);
     const shotCleanerVsBadBulletKey: u16 = Game::computeKey(ObjType::ShotCleaner, ObjType::BadBullet);
     const bulletVsEnemyKey: u16 = Game::computeKey(ObjType::Bullet, ObjType::Enemy);
@@ -1439,7 +1441,8 @@ impl Game {
                     //Targets.Clear();
 
                     for r in self.components.pack.filter(Cf::Active | Cf::Player) {
-                        if self.slots[usize::try_from(r.player.slot).unwrap()].connected == true {
+                        let i: usize = r.player.slot.try_into().unwrap();
+                        if self.slots[i].connected == true {
                             r.player.damage = 0;
                             r.animator.frame = Data::player_ship_0;
                         }
@@ -1592,7 +1595,8 @@ impl Game {
 
         for r in self.components.filter(Cf::Active | Cf::Body | Cf::Player) {
 
-            let slot = self.slots[usize::try_from(r.player.slot).unwrap()];
+            let i: usize = r.player.slot.try_into().unwrap();
+            let slot = self.slots[i];
 
             r.body.velocity.x = 0;
             if r.player.delayFire > 0 {
@@ -1676,13 +1680,12 @@ impl Game {
                             r.body.position = self.eventList[event_index].v;
                         }
                         if r.comp.test(Cf::Player) == true {
-                            r.player.slot = i8::try_from(self.eventList[event_index].key).unwrap();
+                            r.player.slot = self.eventList[event_index].key.try_into().unwrap();
                         }
                         if r.comp.test(Cf::Enemy) == true {
                             let count = i32::try_from(Data::enemy_type_count).unwrap();
-                            //it.enemy.delayFire = u16::try_from(self.rand.next_from_zero(2000)).unwrap();
-                            r.enemy.delayFire = u16::try_from(self.rand.next_u32() % 2000).unwrap();
-                            r.animator.frame = u16::try_from(self.rand.next_from_zero(count) + 2).unwrap();
+                            r.animator.frame = (self.rand.next_from_zero(count) + 2).try_into().unwrap();
+                            r.enemy.delayFire = (self.rand.next_u32() % 2000).try_into().unwrap();
                         }
                     }           
 
@@ -1758,8 +1761,11 @@ impl HelloWorld {
 
     #[method]
     fn custom_init(&mut self, l:i64, r:i64) {
-        self.local_player = i8::try_from(l).unwrap();
-        self.game.init( u32::try_from(r).unwrap() );
+        //self.local_player = l.try_into().unwrap(); //  i8::try_from(l).unwrap();
+        //self.game.init( r.try_into().unwrap() );
+        
+        self.local_player = l.try_into().unwrap(); //  i8::try_from(l).unwrap();
+        self.game.init( r.try_into().unwrap() );
 
         godot_print!("I initailzed!");
     }
@@ -1844,7 +1850,9 @@ impl HelloWorld {
             //        0_008333333
             // Const.v0_00833333333333333
 
-            let tx: f32 = self.game.global.textAnimate as f32 / 1000000000.0;
+            // i guess f32 has no try_from i32?  seems like it shoud...
+            //let tx: f32 = f32::try_from(self.game.global.textAnimate).unwrap() / 1000000000.0;
+            let tx: f32 = (self.game.global.textAnimate as f32) / 1000000000.0;
             let c1: f32 = 1.70158;
             let c3: f32 = c1 + 1.0;
 
