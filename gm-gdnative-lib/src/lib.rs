@@ -24,7 +24,7 @@ use gdnative::prelude::*;
 
 // Put new trait on Vec
 
-trait CpContainer {
+/*trait CpContainer {
     //fn smartCopyTrait(&mut self, other_trait: &dyn Any);
     fn clearTrait(&mut self);
     fn resizeTrait(&mut self, s: usize);
@@ -32,7 +32,7 @@ trait CpContainer {
 
 //impl<T: 'static + Clone + Copy + Default> CpContainer for Vec<T> {
 impl<T: Clone + Copy + Default> CpContainer for Vec<T> {
-    /*fn smartCopyTrait(&mut self, other_trait: &dyn Any) {
+    fn smartCopyTrait(&mut self, other_trait: &dyn Any) {
         let other_any: &dyn Any = other_trait;
         match other_any.downcast_ref::<Vec<T>>() {
             None => panic!("Not the right vector type!"),
@@ -41,7 +41,7 @@ impl<T: Clone + Copy + Default> CpContainer for Vec<T> {
                 for i in 0..other.len() { self[i] = other[i]; }        
             }
         };
-    }*/
+    }
 
     fn clearTrait(&mut self) {
         self.clear();
@@ -52,7 +52,7 @@ impl<T: Clone + Copy + Default> CpContainer for Vec<T> {
             self.resize(s, Default::default());
         }
     }
-}
+}*/
 
 // Table
 struct IndexTable {
@@ -649,7 +649,7 @@ impl CpPack {
         Default::default()
     }
 
-    fn group(&self) -> [&dyn CpContainer; 7] {
+    /*fn group(&self) -> [&dyn CpContainer; 7] {
         [
             &self.generation,
             &self.comp,
@@ -671,7 +671,7 @@ impl CpPack {
             &mut self.enemy,
             &mut self.animator,
         ]
-    }
+    }*/
 
 
     fn iter(&mut self) -> CpIterMut {
@@ -727,7 +727,7 @@ impl CpPack {
     }
 
     fn smartCopy(&mut self, other: &CpPack) {
-        self.generation.resize(other.generation.len(), Default::default());
+        self.generation.resize(other.generation.len(), Default::default());        
         self.comp.resize(other.comp.len(), Default::default());
         self.objectId.resize(other.objectId.len(), Default::default());
         self.body.resize(other.body.len(), Default::default());
@@ -735,13 +735,13 @@ impl CpPack {
         self.enemy.resize(other.enemy.len(), Default::default());
         self.animator.resize(other.animator.len(), Default::default());
 
-        for i in 0..other.generation.len() { self.generation[i] = other.generation[i]; }
-        for i in 0..other.comp.len() { self.comp[i] = other.comp[i]; }
-        for i in 0..other.objectId.len() { self.objectId[i] = other.objectId[i]; }
-        for i in 0..other.body.len() { self.body[i] = other.body[i]; }
-        for i in 0..other.player.len() { self.player[i] = other.player[i]; }
-        for i in 0..other.enemy.len() { self.enemy[i] = other.enemy[i]; }
-        for i in 0..other.animator.len() { self.animator[i] = other.animator[i]; }
+        self.generation.as_mut_slice().copy_from_slice(&other.generation.as_slice());
+        self.comp.as_mut_slice().copy_from_slice(&other.comp.as_slice());
+        self.objectId.as_mut_slice().copy_from_slice(&other.objectId.as_slice());
+        self.body.as_mut_slice().copy_from_slice(&other.body.as_slice());
+        self.player.as_mut_slice().copy_from_slice(&other.player.as_slice());
+        self.enemy.as_mut_slice().copy_from_slice(&other.enemy.as_slice());
+        self.animator.as_mut_slice().copy_from_slice(&other.animator.as_slice());
     }
 
 }
@@ -973,7 +973,7 @@ impl Cp {
     fn smartCopy(&mut self, other: &Self) {
         self.manager.list.resize(other.manager.list.len(), Default::default());   
         self.manager.head = other.manager.head;
-        for i in 0..other.manager.list.len() { self.manager.list[i] = other.manager.list[i]; } 
+        self.manager.list.as_mut_slice().copy_from_slice(&other.manager.list.as_slice());
         self.pack.smartCopy(&other.pack);
     }
 
@@ -1540,8 +1540,7 @@ impl Game {
     
     fn smartCopy(&mut self, other: &Game) {
         self.slots.resize(other.slots.len(), Default::default());
-        for i in 0..other.slots.len() { self.slots[i] = other.slots[i]; }
-
+        self.slots.as_mut_slice().copy_from_slice(&other.slots.as_slice());
         self.global = other.global;
         self.rand = other.rand;
         self.components.smartCopy(&other.components);
