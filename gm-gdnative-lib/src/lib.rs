@@ -6,10 +6,11 @@
 
 use std::ops;
 use std::vec;
+use std::any::Any;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::cmp::Ordering;
-use std::slice::IterMut;
+use std::slice::{Iter, IterMut};
 use std::iter::Enumerate;
 
 use gdnative::prelude::*;
@@ -21,9 +22,39 @@ use gdnative::prelude::*;
 
 **************************/
 
-// Table
+// Put new trait on Vec
 
-#[derive(Default)]
+trait CpContainer {
+    //fn smartCopyTrait(&mut self, other_trait: &dyn Any);
+    fn clearTrait(&mut self);
+    fn resizeTrait(&mut self, s: usize);
+}
+
+//impl<T: 'static + Clone + Copy + Default> CpContainer for Vec<T> {
+impl<T: Clone + Copy + Default> CpContainer for Vec<T> {
+    /*fn smartCopyTrait(&mut self, other_trait: &dyn Any) {
+        let other_any: &dyn Any = other_trait;
+        match other_any.downcast_ref::<Vec<T>>() {
+            None => panic!("Not the right vector type!"),
+            Some(other) => {
+                self.resize(other.len(), Default::default());
+                for i in 0..other.len() { self[i] = other[i]; }        
+            }
+        };
+    }*/
+
+    fn clearTrait(&mut self) {
+        self.clear();
+    }
+
+    fn resizeTrait(&mut self, s: usize) {
+        if self.len() < s {
+            self.resize(s, Default::default());
+        }
+    }
+}
+
+// Table
 struct IndexTable {
     head: u16,
     list: Vec<u16>,
@@ -69,7 +100,11 @@ impl IndexTable {
     }
 }
 
-
+impl Default for IndexTable {
+    fn default() -> Self {
+       Self::new()
+    }
+}
 
 
 /***************************
@@ -177,6 +212,12 @@ impl MersenneTwister {
         i32::try_from(n).unwrap() + min
     }
 
+}
+
+impl Default for MersenneTwister {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 
@@ -346,26 +387,10 @@ impl ObjType {
     }
 }
 
-#[derive(Default, Copy, Clone)]
+#[derive(Default, Copy, Clone, PartialEq)]
 struct Cf {
     value: u8
 }
-
-impl Cf {
-
-    fn from(value: u8) -> Cf {
-        Cf { value }
-    }
-
-    fn test(&self, mask: u8) -> bool {
-        self.value & mask == mask
-    }
-
-    fn none(&self) -> bool {
-        self.value == Cf::None
-    }
-}
-
 
 impl Cf {
     const None: u8 = 0;
@@ -376,7 +401,21 @@ impl Cf {
     const Enemy: u8 = 1 << 4;
     const Animator: u8 = 1 << 5;
     const Active: u8 = 1 << 6;
+
+    fn from(value: u8) -> Cf {
+        Cf { value }
+    }
+
+    fn contains(&self, mask: u8) -> bool {
+        self.value & mask == mask
+    }
+
+    fn none(&self) -> bool {
+        self.value == Cf::None
+    }
 }
+
+
 
 /***************************
 
@@ -593,17 +632,6 @@ impl Event {
 
 **************************/
 
-/*
-    for item in 0..5 {
-        println!("{}", item);
-    }
-
-    let mut iterator = (0..5).into_iter();
-    while let Some(item) = iterator.next() {
-        println!("{}", item);
-    }
-*/
-
 #[derive(Default)]
 struct CpPack {
     generation: Vec<u16>,
@@ -620,6 +648,31 @@ impl CpPack {
     fn new() -> CpPack { 
         Default::default()
     }
+
+    fn group(&self) -> [&dyn CpContainer; 7] {
+        [
+            &self.generation,
+            &self.comp,
+            &self.objectId,
+            &self.body,
+            &self.player,
+            &self.enemy,
+            &self.animator,
+        ]
+    }
+
+    fn group_mut(&mut self) -> [&mut dyn CpContainer; 7] {
+        [
+            &mut self.generation,
+            &mut self.comp,
+            &mut self.objectId,
+            &mut self.body,
+            &mut self.player,
+            &mut self.enemy,
+            &mut self.animator,
+        ]
+    }
+
 
     fn iter(&mut self) -> CpIterMut {
         CpIterMut {
@@ -841,7 +894,7 @@ impl<'a> Iterator for CpIterMut<'a> {
                 return None;
             } else {
                 let c = comp.unwrap();
-                if c.1.test(self.mask) {
+                if c.1.contains(self.mask) {
                     done = true;
                     return Some(
                         CpReference {
@@ -878,23 +931,23 @@ impl CpPrefab {
 
     fn get(&mut self, cp: &Cp, entity: Entity) {
         let i =  entity.index();
-        if cp.pack.comp[i].test(Cf::Component) == true { self.comp = cp.pack.comp[i]; }
-        if cp.pack.comp[i].test(Cf::ObjectId) == true {  self.objectId = cp.pack.objectId[i]; }
-        if cp.pack.comp[i].test(Cf::Body) == true { self.body = cp.pack.body[i]; }
-        if cp.pack.comp[i].test(Cf::Player) == true { self.player = cp.pack.player[i]; }
-        if cp.pack.comp[i].test(Cf::Enemy) == true { self.enemy = cp.pack.enemy[i]; }
-        if cp.pack.comp[i].test(Cf::Animator) == true { self.animator = cp.pack.animator[i]; }
+        if cp.pack.comp[i].contains(Cf::Component) == true { self.comp = cp.pack.comp[i]; }
+        if cp.pack.comp[i].contains(Cf::ObjectId) == true {  self.objectId = cp.pack.objectId[i]; }
+        if cp.pack.comp[i].contains(Cf::Body) == true { self.body = cp.pack.body[i]; }
+        if cp.pack.comp[i].contains(Cf::Player) == true { self.player = cp.pack.player[i]; }
+        if cp.pack.comp[i].contains(Cf::Enemy) == true { self.enemy = cp.pack.enemy[i]; }
+        if cp.pack.comp[i].contains(Cf::Animator) == true { self.animator = cp.pack.animator[i]; }
     }
 
     fn set(&self, cp: &mut Cp, entity: Entity) {
         if cp.valid(entity) == true {
             let i =  entity.index();
-            if self.comp.test(Cf::Component) == true { cp.pack.comp[i] = self.comp; }
-            if self.comp.test(Cf::ObjectId) == true { cp.pack.objectId[i] = self.objectId; }
-            if self.comp.test(Cf::Body) == true { cp.pack.body[i] = self.body; }
-            if self.comp.test(Cf::Player) == true { cp.pack.player[i] = self.player; }
-            if self.comp.test(Cf::Enemy) == true { cp.pack.enemy[i] = self.enemy; }
-            if self.comp.test(Cf::Animator) == true { cp.pack.animator[i] = self.animator; }
+            if self.comp.contains(Cf::Component) == true { cp.pack.comp[i] = self.comp; }
+            if self.comp.contains(Cf::ObjectId) == true { cp.pack.objectId[i] = self.objectId; }
+            if self.comp.contains(Cf::Body) == true { cp.pack.body[i] = self.body; }
+            if self.comp.contains(Cf::Player) == true { cp.pack.player[i] = self.player; }
+            if self.comp.contains(Cf::Enemy) == true { cp.pack.enemy[i] = self.enemy; }
+            if self.comp.contains(Cf::Animator) == true { cp.pack.animator[i] = self.animator; }
         }
     }
 
@@ -992,11 +1045,133 @@ impl Cp {
 
 /***************************
 
+    Component Iterators
+
+**************************/
+
+
+/*
+struct SliceComp<'a> {
+    comp: &'a [Cf],
+}
+
+struct SliceMutBodyEnemy<'a> {
+    body: &'a mut [Body],
+    enemy: &'a mut [Enemy],
+}
+
+struct PackCompMutBodyEnemy<'a> {
+    pack: SliceComp<'a>,
+    pack_mut: SliceMutBodyEnemy<'a>,
+}
+
+
+impl<'a> PackCompMutBodyEnemy<'a> {
+    fn iter_mut(self) -> IterMutBodyEnemy<'a> {
+        IterMutBodyEnemy {
+            comp: self.comp.iter().enumerate(),
+            body: self.body.iter_mut().enumerate(),
+            enemy: self.enemy.iter_mut().enumerate(),
+        }
+    }
+}
+
+struct IterCompMutBodyEnemy<'a> {
+    comp: Enumerate<Iter<'a, Cf>>,
+    body: Enumerate<IterMut<'a, Body>>,
+    enemy: Enumerate<IterMut<'a, Enemy>>,
+}
+
+struct RefMutBodyEnemy<'a> {
+    body: &'a mut Body,
+    enemy: &'a mut Enemy,
+}
+
+impl<'a> Iterator for IterMutBodyEnemy<'a> {
+    type Item = RefMutBodyEnemy<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut done = false;
+        while done == false {
+            let comp = self.comp.next();
+            let body = self.body.next();
+            let enemy = self.enemy.next();
+            if comp == None {
+                done = true;
+                return None;
+            } else {
+                if comp.unwrap().1.contains(Cf::Active | Cf::Body | Cf::Enemy) {
+                    done = true;
+                    return Some(
+                        RefMutBodyEnemy {
+                            body: body.unwrap().1,
+                            enemy: enemy.unwrap().1,
+                        }
+                    );
+                } else {
+                    // do nothing, keep going!
+                }
+            }
+        }
+        None
+    }
+
+}
+*/
+
+/***************************
+
+    Systems
+
+**************************/
+
+/*
+struct EnemySystem { 
+
+
+}
+
+
+impl EnemySystem {
+    fn execute(game: &mut Game) {
+        let pack_mut = SliceBodyEnemy {
+            comp: game.components.pack.comp.as_slice(),
+            body: game.components.pack.body.as_mut_slice(),
+            enemy: game.components.pack.enemy.as_mut_slice(),
+        };
+
+        for r in pack_mut.iter_mut() {
+            r.enemy.counter += 1;
+            if r.enemy.counter > 150 {
+                r.enemy.counter = 0;
+                r.enemy.direction = -r.enemy.direction;
+            }
+
+            let pr = ent.get(player);
+
+            r.body.velocity.x = i32::from(r.enemy.direction) * game.global.enemySpeed;
+
+            if r.enemy.delayFire > 0 {
+                r.enemy.delayFire -= 1;
+            }
+
+            if r.enemy.delayFire == 0 {
+                r.enemy.delayFire = 2000;
+                game.eventList.push( Event::from_entity(ObjType::BadBullet, r.body.position ) );
+            }
+        }
+    }
+}
+*/
+
+/***************************
+
     TheGame
 
 **************************/
 
 struct Data {
+    animation_table: HashMap<u16, u16>,
     prefabs: [CpPrefab; ObjType::USizeCount],
 }
 
@@ -1058,6 +1233,79 @@ impl Data {
     const image_count: u16 = 50;
     const _end_list: u16 = 51;
 
+    fn setupAnimationTable() -> HashMap<u16, u16> {
+        let mut hash = HashMap::new();
+
+        // Animations
+        let player_boom = [
+            Data::player_boom_0,
+            Data::player_boom_1,
+            Data::player_boom_2,
+            Data::player_boom_3,
+            Data::player_boom_4,
+            Data::player_boom_5,
+            Data::player_boom_6,
+            Data::_null,
+            Data::_end_list
+        ];
+        Data::registerAnimation(&mut hash, &player_boom);
+
+        let enemy_boom = [
+            Data::enemy_boom_0,
+            Data::enemy_boom_1,
+            Data::enemy_boom_2,
+            Data::enemy_boom_3,
+            Data::enemy_boom_4,
+            Data::enemy_boom_5,
+            Data::enemy_boom_6,
+            Data::_null,
+            Data::_end_list
+        ];
+        Data::registerAnimation(&mut hash, &enemy_boom);
+
+        let player = [
+            Data::player_ship_0,
+            Data::player_ship_1,
+            Data::_end_list
+        ];
+        Data::registerAnimation(&mut hash, &player);
+
+        let local_player = [
+            Data::local_player_0,
+            Data::local_player_1,
+            Data::_end_list
+        ];
+        Data::registerAnimation(&mut hash, &local_player);
+
+        let mut enemy = [
+            Data::_null,
+            Data::_null,
+            Data::_end_list
+        ];
+        for i in 0..Data::enemy_type_count {
+            let i_u16: u16 = i.try_into().unwrap();
+            enemy[0] = i_u16 + 2;
+            enemy[1] = i_u16 + 2 + Data::enemy_type_count;
+            Data::registerAnimation(&mut hash, &enemy);
+        }
+
+        hash
+    }
+
+    fn registerAnimation(hash: &mut HashMap<u16, u16>, list: &[u16]) {
+        let mut i = 0;
+        while list[i] != Data::_end_list {
+            if list[i] != Data::_null {
+                hash.insert(list[i], list[i + 1]);
+            }
+            i += 1;
+        }
+        let last = list[i - 1];
+        if last != Data::_null {
+            hash.insert(last, list[0]);
+        }
+    }
+
     fn prefab(&self, index: u8) -> CpPrefab {
         // why can't I use index.into() here?
         self.prefabs[usize::from(index)]
@@ -1065,6 +1313,7 @@ impl Data {
 
     fn new() -> Self {
         Self {
+            animation_table: Data::setupAnimationTable(),
             prefabs: [
                 // null object
                 CpPrefab {
@@ -1192,24 +1441,34 @@ impl Data {
 
 }
 
+impl Default for Data {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 
+#[derive(Default)]
 struct Game {
     //collision_table: HashMap<u16, GameCallback>,
-    animation_table: HashMap<u16, u16>,
-
+    
+    // static data
     data: Data, // make this a reference?
 
-    slots: Vec<Slot>,
-
-    global: GlobalState,
-    rand: MersenneTwister,
-    components: Cp,
-
+    // intermediate data, no need to copy
     boundList: Vec<Bounds>,
     eventList: Vec<Event>,
 
+    // must be set from outside every frame
+    slots: Vec<Slot>,
+
+    // must be copied
     gameOver: bool,
+    global: GlobalState,
+    rand: MersenneTwister,
+    
+    // component lists
+    components: Cp,
 }
 
 impl Game {
@@ -1222,21 +1481,8 @@ impl Game {
 
     fn new() -> Self {
         Self {
-            //collision_table: Game::setupCollisionTable(),
-            animation_table: Game::setupAnimationTable(),
-
-            data: Data::new(),
             slots: vec![Default::default(); 64],
-            
-            global: Default::default(),
-
-            rand: MersenneTwister::new(),
-            components: Cp::new(),
-
-            boundList: Vec::new(),
-            eventList: Vec::new(),
-
-            gameOver: false,
+            ..Default::default()
         }
     }
 
@@ -1292,80 +1538,6 @@ impl Game {
     }
     
     
-    fn setupAnimationTable() -> HashMap<u16, u16> {
-        let mut hash = HashMap::new();
-
-        // Animations
-        let player_boom = [
-            Data::player_boom_0,
-            Data::player_boom_1,
-            Data::player_boom_2,
-            Data::player_boom_3,
-            Data::player_boom_4,
-            Data::player_boom_5,
-            Data::player_boom_6,
-            Data::_null,
-            Data::_end_list
-        ];
-        Game::registerAnimation(&mut hash, &player_boom);
-
-        let enemy_boom = [
-            Data::enemy_boom_0,
-            Data::enemy_boom_1,
-            Data::enemy_boom_2,
-            Data::enemy_boom_3,
-            Data::enemy_boom_4,
-            Data::enemy_boom_5,
-            Data::enemy_boom_6,
-            Data::_null,
-            Data::_end_list
-        ];
-        Game::registerAnimation(&mut hash, &enemy_boom);
-
-        let player = [
-            Data::player_ship_0,
-            Data::player_ship_1,
-            Data::_end_list
-        ];
-        Game::registerAnimation(&mut hash, &player);
-
-        let local_player = [
-            Data::local_player_0,
-            Data::local_player_1,
-            Data::_end_list
-        ];
-        Game::registerAnimation(&mut hash, &local_player);
-
-        let mut enemy = [
-            Data::_null,
-            Data::_null,
-            Data::_end_list
-        ];
-        for i in 0..Data::enemy_type_count {
-            let i_u16: u16 = i.try_into().unwrap();
-            enemy[0] = i_u16 + 2;
-            enemy[1] = i_u16 + 2 + Data::enemy_type_count;
-            Game::registerAnimation(&mut hash, &enemy);
-        }
-
-        hash
-    }
-
-    fn registerAnimation(hash: &mut HashMap<u16, u16>, list: &[u16]) {
-        let mut i = 0;
-        while list[i] != Data::_end_list {
-            if list[i] != Data::_null {
-                hash.insert(list[i], list[i + 1]);
-            }
-            i += 1;
-        }
-        let last = list[i - 1];
-        if last != Data::_null {
-            hash.insert(last, list[0]);
-        }
-    }
-    
-    
     fn smartCopy(&mut self, other: &Game) {
         self.slots.resize(other.slots.len(), Default::default());
         for i in 0..other.slots.len() { self.slots[i] = other.slots[i]; }
@@ -1389,6 +1561,8 @@ impl Game {
         self.global.enemyCount = 0;
         self.global.textType = Data::text_ready;
         self.global.textAnimate = 0;
+
+        //self.slots.resize(64, Default::default());
 
         self.components.clear();
 
@@ -1541,7 +1715,7 @@ impl Game {
             r.animator.count += 1;
             if r.animator.count > 3 {
                 r.animator.count = 0;
-                let find_it = self.animation_table.get(&r.animator.frame);
+                let find_it = self.data.animation_table.get(&r.animator.frame);
                 if find_it != None {
                     r.animator.frame = *(find_it.unwrap());
                 }
@@ -1676,13 +1850,13 @@ impl Game {
                     let r = iter.nth(entity).unwrap();
 
                     if !entity.is_null() {
-                        if r.comp.test(Cf::Body) == true {
+                        if r.comp.contains(Cf::Body) == true {
                             r.body.position = self.eventList[event_index].v;
                         }
-                        if r.comp.test(Cf::Player) == true {
+                        if r.comp.contains(Cf::Player) == true {
                             r.player.slot = self.eventList[event_index].key.try_into().unwrap();
                         }
-                        if r.comp.test(Cf::Enemy) == true {
+                        if r.comp.contains(Cf::Enemy) == true {
                             let count = i32::try_from(Data::enemy_type_count).unwrap();
                             r.animator.frame = (self.rand.next_from_zero(count) + 2).try_into().unwrap();
                             r.enemy.delayFire = (self.rand.next_u32() % 2000).try_into().unwrap();
@@ -1807,7 +1981,7 @@ impl HelloWorld {
        
             draw = true;
 
-            if r.comp.test(Cf::Player) == true
+            if r.comp.contains(Cf::Player) == true
             {
                 if r.player.slot == self.local_player
                 {
