@@ -1893,6 +1893,7 @@ impl Game {
 pub struct HelloWorld {
     local_player: i8,
     game: Game,
+    forward: Game,
 }
 
 // You may add any number of ordinary `impl` blocks as you want. However, ...
@@ -1902,6 +1903,7 @@ impl HelloWorld {
         Self {
             local_player: 0,  
             game: Game::new(),
+            forward: Game::new(),
         }
     }
 }
@@ -1952,6 +1954,18 @@ impl HelloWorld {
     }
 
     #[method]
+    fn custom_copy(&mut self) {
+        // update game here
+        self.forward.smartCopy(&self.game);
+    }
+
+    #[method]
+    fn custom_fast_forward(&mut self) {
+        // update game here
+        self.forward.fastForward();
+    }
+
+    #[method]
     fn custom_update(&mut self) {
         // update game here
         self.game.update();
@@ -1976,7 +1990,7 @@ impl HelloWorld {
         let mut ty: i32 = 0;
         let mut tf: u16 = 0;
 
-        for r in self.game.components.filter(Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Animator) {
+        for r in self.forward.components.filter(Cf::Active | Cf::Component | Cf::Body | Cf::ObjectId | Cf::Animator) {
        
             draw = true;
 

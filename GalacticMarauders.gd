@@ -43,12 +43,12 @@ func main_update():
 
 
 func copy_state():
-	#game.copy()
+	rust.custom_copy()
 	pass
 	
 func fast_forward():
-	#set_input()
-	#rust.custom_update()
+	set_input()
+	rust.custom_fast_forward()
 	pass
 
 
