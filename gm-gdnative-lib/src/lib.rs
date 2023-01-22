@@ -366,9 +366,7 @@ struct Enemy {
 }
 
 #[derive(Default, Copy, Clone)]
-struct ObjType {
-    value: u8
-}
+struct ObjType(u8);
 
 impl ObjType {
     const Null: u8 = 0;
@@ -383,14 +381,12 @@ impl ObjType {
     const USizeCount:usize = 8;
 
     fn from(value: u8) -> ObjType {
-        Self { value }
+        Self(value)
     }
 }
 
 #[derive(Default, Copy, Clone, PartialEq)]
-struct Cf {
-    value: u8
-}
+struct Cf(u8);
 
 impl Cf {
     const None: u8 = 0;
@@ -403,15 +399,15 @@ impl Cf {
     const Active: u8 = 1 << 6;
 
     fn from(value: u8) -> Cf {
-        Cf { value }
+        Self(value)
     }
 
     fn contains(&self, mask: u8) -> bool {
-        self.value & mask == mask
+        self.0 & mask == mask
     }
 
     fn none(&self) -> bool {
-        self.value == Cf::None
+        self.0 == Cf::None
     }
 }
 
@@ -984,7 +980,7 @@ impl Cp {
     fn destroy(&mut self, entity: Entity) {
         if self.valid(entity) == true {
             self.pack.generation[entity.index()] += 1;
-            self.pack.comp[entity.index()].value = Cf::None;
+            self.pack.comp[entity.index()].0 = Cf::None;
 
             self.manager.free( entity.id() );
         }
@@ -996,7 +992,7 @@ impl Cp {
         if value != IndexTable::END_OF_LIST {
             let deref:usize = value.into();
             self.pack.resize(deref + 1);
-            self.pack.comp[deref].value = Cf::None;
+            self.pack.comp[deref].0 = Cf::None;
             entity = Entity::from(value, self.pack.generation[deref])
         }
         entity
@@ -1021,8 +1017,8 @@ impl Cp {
         if i < self.pack.comp.len() {
             godot_print!("*********************************************");
             godot_print!("Entity Index: {}", index);
-            godot_print!("Comp: {}", self.pack.comp[i].value);
-            godot_print!("ObjectId: {}", self.pack.objectId[i].value);
+            godot_print!("Comp: {}", self.pack.comp[i].0);
+            godot_print!("ObjectId: {}", self.pack.objectId[i].0);
             godot_print!("body position x: {}", self.pack.body[i].position.x);
             godot_print!("body position y: {}", self.pack.body[i].position.y);
             godot_print!("Enemy direction: {}", self.pack.enemy[i].direction);
@@ -1665,7 +1661,7 @@ impl Game {
 
         // fill up the bounds list with objects
         for r in self.components.filter(Cf::Active | Cf::Body) {
-            self.boundList.push( Bounds::from(r.entity, r.objectId.value, r.body.position, r.body.velocity, r.body.size) );
+            self.boundList.push( Bounds::from(r.entity, r.objectId.0, r.body.position, r.body.velocity, r.body.size) );
         }
 
         // sort it here!
@@ -1887,6 +1883,9 @@ impl Game {
 ********************************************************************/
 
 
+
+
+
 /// The HelloWorld "class"
 #[derive(NativeClass)]
 #[inherit(Node)]
@@ -1927,6 +1926,8 @@ impl HelloWorld {
         // The `godot_print!` macro works like `println!` but prints to the Godot-editor
         // output tab as well.
         godot_print!("Hello world from node {}!", base.to_string());
+
+
     }
 
     #[method]
